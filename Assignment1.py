@@ -1,10 +1,13 @@
 import sqlparse, copy
 import re, sys, os
 
-path = './files/'
+path = './test_dataset/'
 column_to_table_mapping = {}
 
-def duplicate(List, n):
+def duplicate(List, n, flag):
+    if(flag):
+        temp_list = copy.deepcopy(List)
+        return temp_list * n
     return [ele for ele in List for _ in range(n)]
 
 def verify_keywords(keywords):
@@ -17,7 +20,6 @@ def verify_keywords(keywords):
             sys.exit()
     return
     
-
 def check_validity(column_to_table_mapping, columns, tables = None, database = None):
     all_cols = []
     for table in tables:
@@ -109,7 +111,7 @@ def sql_parser(query):
     position = 0
 
     if ';' not in query:
-        print("Semicolin is missing from query")
+        print("Semicolon is missing from query")
         sys.exit()
 
     # remove semicolon
@@ -257,12 +259,12 @@ def join_tables(tables, database):
 
         for column in result['schema']:
             if( len(result[column]) ):
-                result[column] = duplicate(result[column], n)
+                result[column] = duplicate(result[column], n, 0)
         
         for column in table['schema']:
             result[column] = []
             if( len(table[column]) ):
-                result[column] = duplicate(table[column], m)
+                result[column] = duplicate(table[column], m, 1)
                 result['schema'].append(column)
     
     return result
@@ -273,6 +275,7 @@ def apply_where_condition(table, tables, database, conditions):
     
     #Check validity of conditions
     conditions = conditions.replace('AND', 'and').replace('OR', 'or')
+    conditions = conditions.replace('=', '==')
     only_cols =  re.compile('[A-Za-z]+').findall(conditions)
     check_validity(column_to_table_mapping, only_cols, tables, database)
 
@@ -391,8 +394,8 @@ def apply_distinct(result, columns, keywords):
         
         unique_data = [list(x) for x in set(tuple(x) for x in lists)]
         table = {}
-        table['schema'] = result['schema']
-        for col in result['schema']:
+        table['schema'] = columns
+        for col in columns:
             table[col] = []
         
         for row in unique_data:
@@ -434,6 +437,10 @@ def execute_query(query):
     return result
 
 if __name__ == "__main__":
-    query = "SELECT a,b FROM Table1 where a > b;"
+    if(len(sys.argv) < 2 or sys.argv[1] == ''):
+        print("You have not provided query as an argument")
+        sys.exit()
+        
+    query = sys.argv[1]
     result = execute_query(query)
 
